@@ -19,9 +19,34 @@
 .cabecera__fila { display: flex; align-items: center; gap: var(--sp-3); }
 .cabecera__fila .marca { margin-inline-end: auto; }
 
+/* BUG-4 (29/10, reportado por el usuario): tras entrar al panel, la ventana
+   de acceso seguía visible «como encabezado». Causa: en CSS, una regla del
+   autor (.admin__login display:grid · .btn display:inline-flex) vence al
+   display:none que el navegador aplica al atributo [hidden]. Esta regla
+   deja [hidden] por encima de cualquier display del dashboard: lo que está
+   oculto, está oculto de verdad — ventana de acceso, botón Salir, bloques. */
+body[data-pagina="admin"] [hidden] { display: none !important; }
+
 /* ---- Login ---------------------------------------------------------------- */
 .admin__login { display: grid; place-items: center; min-height: 50vh; }
-.admin__login-tarjeta { width: min(26rem, 100%); display: grid; gap: var(--sp-4); }
+.admin__login-tarjeta {
+  width: min(26rem, 100%);
+  display: grid;
+  gap: var(--sp-4);
+  /* BUG-3 (29/10, reportado por el usuario): el borde --c-borde se perdía
+     contra el fondo (la tarjeta parecía «negro sobre negro») → borde
+     fuerte + contención: nada de la tarjeta puede salirse del marco. */
+  border-color: var(--c-borde-fuerte);
+  overflow: hidden;
+}
+/* BUG-3: el h1 heredaba --fs-display (hasta 4.3rem): la palabra
+   «administrador» no cabía en la tarjeta de 26rem, estiraba la columna de
+   la grilla y el input se salía del marco. En un panel manda el título,
+   no el cartel. */
+.admin__login-tarjeta h1 {
+  font-size: var(--fs-titulo);
+  overflow-wrap: anywhere;
+}
 .admin__login-tarjeta .btn { justify-self: start; }
 
 /* ---- Formularios (los publica el dashboard, no la vitrina) ---------------- */
@@ -38,6 +63,7 @@
 .campo input[type="date"],
 .campo select,
 .campo textarea {
+  width: 100%;   /* BUG-3: los campos llenan su columna, nunca la desbordan */
   background: var(--c-fondo);
   border: 1px solid var(--c-borde-fuerte);
   border-radius: var(--radio-s);
@@ -79,8 +105,24 @@
   align-items: start;
 }
 @media (min-width: 56em) {
-  .admin__columnas { grid-template-columns: minmax(0, 1fr) 24rem; }
+  .admin__columnas { grid-template-columns: minmax(0, 1fr) minmax(22rem, 30rem); }
 }
+
+/* MEJORA (MTTO-2, 29/10): la preview era un cuadro fijo de 24rem (384px) —
+   muy pequeño para juzgar una portada de ~1200px. Ahora: columna más ancha
+   por defecto + botón «Ancho completo» que pone la preview arriba, a toda
+   la fila, sin límite de altura. */
+.admin__preview-cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: .5rem;
+}
+.admin__preview-cabecera .admin__preview-titulo { margin-bottom: 0; }
+.admin__columnas--amplia { grid-template-columns: minmax(0, 1fr); }
+.admin__columnas--amplia .admin__editor { order: 2; }
+.admin__columnas--amplia .admin__preview { order: 1; position: static; }
+.admin__columnas--amplia .admin__preview-marco { max-height: none; }
 
 .admin__barra {
   display: flex;

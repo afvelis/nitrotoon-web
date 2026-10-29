@@ -128,6 +128,9 @@
     if (hash === CFG.hash) {
       limpiarFallos();
       sesion.abrir();
+      /* BUG-2 (29/10, reportado por el usuario): el PIN quedaba vivo en el
+         campo tras un login exitoso. Se limpia SIEMPRE, en éxito y en fallo. */
+      ref("pin").value = "";
       abrirPanel();
     } else {
       const restantes = anotarFallo();
@@ -816,7 +819,7 @@ window.NITROTOON_DATA = ${JSON.stringify(datos, null, 2)};
     salida.hidden = true;
     if (!a.value || a.value.length < 6) { estado.textContent = "El PIN nuevo debe tener al menos 6 caracteres."; return; }
     if (a.value !== b.value) { estado.textContent = "Los dos PIN no coinciden."; return; }
-    estado.textContent = "Hash listo. Cópialo en js/admin-acceso.js y súbelo a GitHub junto con data.js.";
+    estado.textContent = "Hash listo. Reemplaza la línea «hash: …» de js/admin-acceso.js y sube ESE archivo a GitHub. data.js no cambia en este paso.";
     salida.hidden = false;
     salida.textContent =
       `// js/admin-acceso.js — reemplaza la línea del hash por:\n` +
@@ -846,6 +849,7 @@ window.NITROTOON_DATA = ${JSON.stringify(datos, null, 2)};
     vistaPanel().hidden = true;
     vistaLogin().hidden = false;
     ref("btn-salir").hidden = true;
+    ref("pin").value = "";   /* BUG-2: nunca devolver el login con un PIN dentro */
     revisarBloqueo();
     ref("pin").focus();
   }
@@ -873,6 +877,11 @@ window.NITROTOON_DATA = ${JSON.stringify(datos, null, 2)};
       entrarConPin(ref("pin").value);
     });
     ref("btn-salir").addEventListener("click", () => { sesion.cerrar(); mostrarLogin(); });
+    ref("btn-ampliar").addEventListener("click", () => {
+      const rejilla = document.querySelector("#panel-vitrina .admin__columnas");
+      const amplia = rejilla.classList.toggle("admin__columnas--amplia");
+      ref("btn-ampliar").textContent = amplia ? "Vista normal" : "Ancho completo";
+    });
     ref("btn-anadir").addEventListener("click", anadirPieza);
     ref("btn-generar").addEventListener("click", generarDataJs);
     ref("btn-descartar").addEventListener("click", () => {
