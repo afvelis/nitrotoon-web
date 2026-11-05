@@ -313,7 +313,13 @@
   background:
     radial-gradient(70rem 42rem at 50% 118%, var(--espacio-acento-brillo), transparent 58%);
 }
-.hero__interior { position: relative; display: grid; gap: var(--sp-4); }
+/* MEJORA (04/11, pedido del usuario): el bloque del evento se veía pegado a
+   la izquierda porque el título iba limitado a `max-width: 12ch` — dejaba un
+   hueco muerto enorme a la derecha. Ahora el hero es un CARTEL CENTRADO:
+   kicker, título, meta, acciones y nota centrados en el contenedor. Los
+   párrafos largos se quedan en su columna de lectura centrada (un párrafo
+   corto justificado crea huecos entre palabras) — se lee, no se estira. */
+.hero__interior { position: relative; display: grid; gap: var(--sp-4); justify-items: center; text-align: center; }
 .hero__kicker {
   display: inline-flex;
   align-items: center;
@@ -332,7 +338,8 @@
 .hero__titulo {
   font-size: var(--fs-hero);
   line-height: .96;
-  max-width: 12ch;
+  max-width: 20ch;
+  text-wrap: balance;
 }
 .hero__titulo .linea-acento {
   display: block;
@@ -345,13 +352,23 @@
 .hero__meta {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: .5rem 1.4rem;
   color: var(--c-perla);
   font-size: var(--fs-sub);
 }
 .hero__meta strong { color: var(--c-texto); }
-.hero__acciones { display: flex; flex-wrap: wrap; gap: var(--sp-3); align-items: center; }
-.hero__nota { color: var(--c-perla); font-size: var(--fs-pequeno); max-width: 34rem; }
+.hero__acciones { display: flex; flex-wrap: wrap; gap: var(--sp-3); align-items: center; justify-content: center; }
+/* La nota (y la bajada del evento, que se renderiza con esta misma clase)
+   se queda en columna de lectura, centrada en la página: las líneas
+   alineadas a la izquierda dentro del bloque — se lee, no se estira. */
+.hero__nota {
+  color: var(--c-perla);
+  font-size: var(--fs-pequeno);
+  max-width: var(--ancho-lectura);
+  margin-inline: auto;
+  text-align: start;
+}
 
 /* Póster/video del HERO: el slot assets/hero-loop.mp4 se activa solo si
    existe (§9); sin él, la animación CSS del fondo sostiene la escena. */
