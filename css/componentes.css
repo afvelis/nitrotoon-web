@@ -849,3 +849,70 @@
   .cinta__cuenta { display: none; }
   .marca__lema { display: none; }
 }
+
+/* ==========================================================================
+   MÓVIL · ajustes finos (MEJORA 04/11, reporte del usuario: «en teléfono
+   está desprolijo, el hero es demasiado grande»)
+
+   El sitio es mobile-first en estructura, pero le faltaban los ajustes de
+   escala: en un teléfono de 390px el título del hero medía 43px y el bloque
+   completo ocupaba más de una pantalla entera. Aquí se corrige SOLO la
+   escala y el aire — nada de la identidad (paleta y tipografías cerradas).
+   ========================================================================== */
+@media (max-width: 48em) {
+  /* 1 · El hero respira menos y su título cabe de un vistazo */
+  .hero {
+    padding-block: var(--sp-5) var(--sp-4);
+  }
+  .hero__interior { gap: var(--sp-3); }
+  .hero__titulo {
+    font-size: clamp(1.85rem, 8.5vw, 2.6rem);
+    line-height: 1;
+    max-width: 100%;
+  }
+  /* El «linea-acento» (la fecha bajo el nombre) no debe competir con el título */
+  .hero__titulo .linea-acento { font-size: .42em; letter-spacing: .06em; }
+  .hero__kicker { letter-spacing: .18em; }
+  /* La bajada: más compacta y con mejor interlineado en pantalla pequeña */
+  .hero__nota { font-size: var(--fs-pequeno); line-height: 1.5; }
+  .hero__meta { font-size: 1rem; gap: .3rem .9rem; }
+  .hero__acciones { gap: var(--sp-2); }
+
+  /* 2 · Cuenta regresiva: 4 celdas legibles sin apretar ni salirse */
+  .cuenta { gap: .4rem; justify-content: center; }
+  .cuenta__celda {
+    min-width: 4rem;
+    padding: .45rem .4rem .4rem;
+  }
+  .cuenta__valor { font-size: 1.35rem; }
+  .cuenta__etiqueta { font-size: .62rem; letter-spacing: .14em; }
+
+  /* 3 · Cinta infinita: más lenta y con ítems legibles (no marean) */
+  .franja { padding-block: .45rem; }
+  .franja__item {
+    font-size: .68rem;
+    letter-spacing: .16em;
+    padding-inline: .8rem;
+  }
+  .franja__pista { animation-duration: 46s; }
+
+  /* 4 · Las secciones no necesitan el aire de escritorio */
+  .seccion { padding-block: var(--sp-5); }
+  .seccion--compacta { padding-block: var(--sp-4); }
+}
+
+/* Teléfonos pequeños (iPhone SE y similares, 320-360px) */
+@media (max-width: 22.5em) {
+  .hero__titulo { font-size: 1.7rem; }
+  .cuenta__celda { min-width: 3.5rem; }
+  .cuenta__valor { font-size: 1.15rem; }
+  .franja__item { font-size: .62rem; padding-inline: .65rem; }
+}
+
+/* 5 · Los h1 de las páginas interiores (heredan --fs-display): en móvil
+   bajan un escalón para no romper palabras ni empujar el contenido. */
+@media (max-width: 48em) {
+  h1 { font-size: clamp(1.6rem, 7.2vw, 2.1rem); line-height: 1.05; }
+  h2 { font-size: clamp(1.25rem, 5.4vw, 1.6rem); }
+  body { overflow-wrap: break-word; }
+}
