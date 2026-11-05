@@ -120,15 +120,21 @@ function pintarCinta() {
 }
 
 /* ---- Cuenta regresiva (cinta y hero) ----------------------------------------
-     [data-cuenta][data-fecha="2027-07-17T00:00:00-04:00"]                      */
+     [data-cuenta][data-fecha="2026-12-05T00:00:00-04:00"]
+     BUG-5 (04/11, reportado por el usuario: «las celdas quedan en --»):
+     la versión anterior congelaba `$$("[data-cuenta]")` en la PRIMERA
+     llamada. vitrina.js arranca antes de que vistas.js dibuje el hero, así
+     que la lista quedaba vacía y el guardia `_activa` impedía la segunda
+     pasada: las celdas nunca se pintaban. Ahora los nodos se recogen en
+     cada tick, de modo que sirve para cualquier cuenta que aparezca después
+     (hero, piezas del dashboard, eventos futuros). */
 function iniciarCuentas() {
   if (iniciarCuentas._activa) return;
-  const nodos = $$("[data-cuenta]");
-  if (!nodos.length) return;
+  if (!$$("[data-cuenta]").length) return;   /* aún no hay nada que pintar */
   iniciarCuentas._activa = true;
   const pintar = () => {
     const ahora = Date.now();
-    for (const n of nodos) {
+    for (const n of $$("[data-cuenta]")) {    /* fresco en cada tick */
       const objetivo = new Date(n.dataset.fecha).getTime();
       if (!objetivo) continue;
       let s = Math.max(0, Math.floor((objetivo - ahora) / 1000));
