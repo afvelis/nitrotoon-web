@@ -59,6 +59,76 @@
 .btn--primario { /* definido más abajo junto a los botones */ }
 
 /* ==========================================================================
+   1b · CINTA INFINITA DE CONTENIDO — marquesina de datos del evento vigente
+   (MEJORA 04/11, pedido del usuario: «tipo reel, cinta infinita»)
+
+   · CSS puro: cero JavaScript, cero peso, cero bloqueo de lectura.
+   · Técnica: el texto se duplica una vez y el contenedor se traslada
+     exactamente -50 % en bucle → la costura nunca se ve.
+   · Accesibilidad: es decorativa (aria-hidden) porque repite datos que ya
+     están en el hero. Con prefers-reduced-motion se detiene y se puede leer
+     como cinta estática (regla K2 ya vigente en base.css).
+   · Pausa al pasar el cursor: quien quiera leer un ítem, lo detiene.
+   ========================================================================== */
+.franja {
+  position: relative;
+  overflow: hidden;
+  border-block: 1px solid var(--c-borde);
+  background: var(--c-superficie);
+  padding-block: .55rem;
+  /* Difuminado en los bordes: la costura desaparece en vez de cortarse seca */
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
+          mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
+}
+.franja__pista {
+  display: flex;
+  width: max-content;
+  animation: franja-desfilar 34s linear infinite;
+}
+.franja:hover .franja__pista,
+.franja:focus-within .franja__pista { animation-play-state: paused; }
+.franja__grupo {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex: none;
+}
+.franja__item {
+  display: inline-flex;
+  align-items: center;
+  gap: .9rem;
+  padding-inline: 1.1rem;
+  font-family: var(--t-display);
+  font-size: var(--fs-micro);
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--c-texto);
+  white-space: nowrap;
+}
+/* El separador: un diamante dorado entre ítems (paleta cerrada) */
+.franja__item::after {
+  content: "";
+  width: 5px; height: 5px;
+  background: var(--c-primario);
+  transform: rotate(45deg);
+  flex: none;
+}
+.franja__item--acento { color: var(--c-primario); }
+.franja__item--verde  { color: var(--c-acento); }
+.franja__item--perla  { color: var(--c-perla); }
+
+@keyframes franja-desfilar {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* Movimiento reducido: se detiene y queda legible desde el principio */
+@media (prefers-reduced-motion: reduce) {
+  .franja__pista { animation: none; transform: none; }
+  .franja__grupo[aria-hidden="true"] { display: none; }
+}
+
+/* ==========================================================================
    2 · CABECERA DE MARCA — nave + NITROTOON + disparador del menú gigante
    ========================================================================== */
 .cabecera {
