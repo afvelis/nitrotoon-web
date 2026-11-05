@@ -232,6 +232,9 @@ const PIEZAS_PORTADA = {
         });
       }
       if (interior.querySelector("[data-cuenta]")) iniciarCuentas();
+      /* Cinta infinita: cierra el hero con los datos del evento en movimiento */
+      const cinta = construirCinta(itemsDeCinta());
+      if (cinta) seccion.append(cinta);
     }
     zona.append(seccion);
   },
@@ -686,6 +689,42 @@ function renderContacto() {
 /* ==========================================================================
    ESPACIOS — la misma librería, acento propio (§7.2.13)
    ========================================================================== */
+/* ==========================================================================
+   CINTA INFINITA · marquesina de datos del evento vigente (MEJORA 04/11)
+   CSS puro (la animación vive en componentes.css). Decorativa: repite datos
+   que ya están en la página, por eso va aria-hidden y el texto real se lee
+   en el hero. Las dos pistas son idénticas: el bucle cierra sin costura.
+   ========================================================================== */
+function construirCinta(items) {
+  if (!items || !items.length) return null;
+  /* El track necesita DOS grupos idénticos para que translateX(-50%) cierre
+     el bucle sin hueco. El segundo se oculta a lectores de pantalla. */
+  const grupo = (oculto) => {
+    const g = h("div", { class: "franja__grupo" });
+    if (oculto) g.setAttribute("aria-hidden", "true");
+    items.forEach((it) => {
+      const clase = "franja__item" + (it.tono ? " franja__item--" + it.tono : "");
+      g.append(h("span", { class: clase, html: it.texto }));
+    });
+    return g;
+  };
+  return h("div", { class: "franja", "data-cinta-infinito": true }, [
+    h("div", { class: "franja__pista" }, [grupo(false), grupo(true)])
+  ]);
+}
+
+function itemsDeCinta() {
+  const ev = datosVivos().eventoVigente || {};
+  const disciplinas = (datosVivos().cintaDisciplinas || []);
+  const items = [];
+  if (ev.nombre) items.push({ texto: ev.nombre, tono: "acento" });
+  if (ev.fechaInicio) items.push({ texto: fechaRango(ev.fechaInicio, ev.fechaFin), tono: "verde" });
+  if (ev.ciudad) items.push({ texto: ev.ciudad, tono: "perla" });
+  disciplinas.forEach((d) => items.push({ texto: d }));
+  if (ev.nivelTexto) items.push({ texto: ev.nivelTexto, tono: "perla" });
+  return items;
+}
+
 function renderEspacio() {
   const espacio = datosVivos().espacios && datosVivos().espacios[PAGINA];
   if (!espacio) return;
@@ -693,6 +732,9 @@ function renderEspacio() {
   if (zona) {
     const destacado = espacio.destacado;
     zona.append(
+      /* Cinta infinita de disciplinas: da movimiento a la puerta sin tapar
+         el texto de lectura (CSS puro, decorativa). */
+      construirCinta(itemsDeCinta()) || "",
       h("div", { class: "destacado-espacio" }, [
         h("h2", { html: destacado.titulo }),
         destacado.estado ? estadoBadge({ estado: destacado.estado }) : null,
