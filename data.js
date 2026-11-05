@@ -34,21 +34,36 @@ window.NITROTOON_DATA = {
      «así salió». Para varios eventos activos: ciclo = "carrusel". */
   eventoVigente: {
     ciclo: "pre",
-    nombre: "Nitrotoon Fest 2027",
-    eslogan: "La nave despega otra vez",
-    bajada: "Dos días de anime, torneos, KPOP, cosplay y mercado geek para toda la familia. La convención más grande del año de la comunidad geek venezolana.",
-    fechaInicio: "2027-07-17",
-    fechaFin: "2027-07-18",
-    lugar: "Poliedro de Caracas",
-    ciudad: "Caracas, Venezuela",
-    entradasNota: "Niños menores de 8 años no pagan entrada, acompañados de un adulto con boleto.",
-    demo: true
+    nombre: "Torneo NitroGamers 2026",
+    eslogan: "Seis disciplinas, tres niveles, una sola jornada épica",
+    bajada: "Torneo de deportes electrónicos en Valencia: Tekken 8, Street Fighter 6, EA Sports FC 26, Just Dance, Smash Bros. Ultimate y Call of Duty Mobile. Competencia regional, nacional e internacional con transmisión en vivo y narradores, el sábado 5 y domingo 6 de diciembre.",
+    fechaInicio: "2026-12-05",
+    fechaFin: "2026-12-06",
+    lugar: "Valencia",
+    ciudad: "Valencia, Venezuela",
+    entradasNota: "Aforo limitado a 200 personas con control de acceso QR. Menores de edad participan solo con autorización escrita de su representante.",
+    demo: false
   },
 
   /* ---- Calendario del año — SOLO estados reales (K3, §7.2.11) -----------
      Estados posibles: a-la-venta · en-preparacion · en-negociacion ·
      realizado. Nunca «próximamente».                                   */
   eventos: [
+    {
+      id: "nitrogamers-2026",
+      nombre: "Torneo NitroGamers 2026",
+      tipo: "Torneo de deportes electrónicos",
+      estado: "en-preparacion",
+      estadoTexto: "En preparación con fecha",
+      fechaInicio: "2026-12-05",
+      fechaFin: "2026-12-06",
+      lugar: "Sede de la marca aliada del torneo",
+      ciudad: "Valencia, Venezuela",
+      descripcion: "El torneo gamer del año: seis disciplinas de consola, PC y móvil, competencia en tres niveles (regional, nacional e internacional) en la misma jornada, transmisión en vivo con narradores en pantalla dividida y aforo controlado para 200 personas con acceso QR. Organizado con respaldo técnico y arbitral especializado en esports. Sin brackets de humo: cuando la convocatoria abra, las bases estarán aquí.",
+      puertas: ["gamers"],
+      entradas: false,
+      demo: false
+    },
     {
       id: "nitrotoon-fest-2027",
       nombre: "Nitrotoon Fest 2027",
@@ -76,21 +91,6 @@ window.NITROTOON_DATA = {
       ciudad: "Sede por anunciar en las redes de la comunidad",
       descripcion: "Un día entero de crews de dance covers, random play dance, talleres de fan projects y concursos de banners. El line-up de crews se publica en enero.",
       puertas: ["kpop", "mercado"],
-      entradas: false,
-      demo: true
-    },
-    {
-      id: "arena-regional",
-      nombre: "Nitrotoon Arena · Torneo Gamer Regional",
-      tipo: "Torneo de esports",
-      estado: "en-negociacion",
-      estadoTexto: "En negociación",
-      fechaInicio: null,
-      fechaFin: null,
-      lugar: "Sede en conversaciones",
-      ciudad: "Venezuela",
-      descripcion: "Estamos negociando la sede y los títulos del torneo regional con las organizaciones de esports. Cuando la firma esté lista, esta ficha mostrará fecha, juegos, brackets y premios. Sin adelantos que luego no ocurran: esa es la regla de la casa.",
-      puertas: ["gamers"],
       entradas: false,
       demo: true
     },
@@ -436,6 +436,10 @@ window.NITROTOON_DATA = {
         r: "Por la cinta de entradas de esta web (te lleva a la taquilla oficial de la comunidad) o en los puntos de venta que anunciamos en redes. Evita revendedores: solo taquilla oficial."
       },
       {
+        p: "¿Cómo participo en el Torneo NitroGamers del 5 y 6 de diciembre?",
+        r: "La convocatoria y las bases del torneo se publican aquí y en nuestras redes: disciplinas, brackets, requisitos por nivel y cómo registrarte. El aforo de público está limitado a 200 personas con acceso QR, y los menores de edad compiten solo con autorización escrita de su representante."
+      },
+      {
         p: "¿Los niños pagan entrada?",
         r: "Menores de 8 años no pagan, acompañados de un adulto con boleto. Los talleres infantiles tienen cupo limitado: revisa el programa del fin de semana."
       },
@@ -517,17 +521,17 @@ window.NITROTOON_DATA = {
       titulo: "Zona de juego y torneos",
       entradilla: "Consolas, PCs, arcade y mesa: la puerta donde la competencia es seria y el juego, más. Brackets públicos, reglas claras y torneos con estado real.",
       destacado: {
-        titulo: "Nitrotoon Arena · en negociación",
-        texto: "El torneo gamer regional está en negociación de sede y títulos. Cuando la firma esté lista, aquí verás fecha, juegos, brackets y premios. No vendemos humo.",
+        titulo: "Torneo NitroGamers 2026 · 5 y 6 de diciembre",
+        texto: "Seis disciplinas oficiales: Tekken 8, Street Fighter 6, EA Sports FC 26, Just Dance, Super Smash Bros. Ultimate y Call of Duty Mobile. Competencia en tres niveles —regional, nacional e internacional— en la misma jornada, con transmisión en vivo y narradores en pantalla dividida. Valencia, Venezuela.",
         accion: { texto: "Ver el calendario", url: "eventos.html" },
-        estado: "en-negociacion"
+        estado: "en-preparacion"
       },
       lista: [
-        { titulo: "Zona de juego libre", texto: "Retro, simuladores y mesa de cartas: entre bloque y bloque de torneo, todo se juega." },
-        { titulo: "Brackets a la vista", texto: "Los cuadros del torneo exhibición se publican en papel gigante y en esta web, en texto real y ordenable." },
-        { titulo: "Cast con la comunidad", texto: "Los narradores de la casa comentan las finales con invitados sorpresa." }
+        { titulo: "Seis disciplinas, tres niveles", texto: "Consola, PC y móvil en un mismo torneo: del cuadro regional a la final internacional, servidores cercanos y lejanos. La manera honesta de ver dónde rinde cada jugador." },
+        { titulo: "Transmisión profesional", texto: "Narradores en vivo y pantalla dividida con varias disciplinas a la vez, como una transmisión deportiva. Quien no está en la sala, lo ve igual." },
+        { titulo: "Aforo controlado, control real", texto: "200 personas dentro con sistema formal de acceso QR y estadísticas auditables de cada entrada. Nadie entra sin registro; los menores, solo con autorización escrita." }
       ],
-      demo: true
+      demo: false
     },
     kpop: {
       kicker: "Puerta KPOP",
@@ -645,11 +649,11 @@ window.NITROTOON_DATA = {
         enlace: { texto: "Ver la intranet del evento vigente", url: "index.html#pie-evento" }
       },
       {
-        id: "torneo", estado: "en negociacion",
+        id: "torneo", estado: "hecho",
         titulo: "Torneo gamer oficial",
-        descripcion: "La competencia oficial de la puerta Gamers está en negociación con sede y formato por confirmar. Tiene ficha propia en el calendario y se anuncia con fecha real cuando la firma esté lista.",
+        descripcion: "Cumplido: el Torneo NitroGamers 2026 se celebra el 5 y 6 de diciembre en Valencia, con seis disciplinas, tres niveles de competencia, transmisión con narradores y aforo controlado de 200 personas por acceso QR.",
         resuelve: "Competencia con premios reales y brackets públicos.",
-        enlace: { texto: "Seguir el estado del torneo", url: "eventos.html" }
+        enlace: { texto: "Ver el torneo en el calendario", url: "eventos.html" }
       },
       {
         id: "audiencia", estado: "documentado",
