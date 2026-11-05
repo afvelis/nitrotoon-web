@@ -42,8 +42,22 @@ window.NITROTOON_DATA = {
     lugar: "Valencia",
     ciudad: "Valencia, Venezuela",
     entradasNota: "Aforo limitado a 200 personas con control de acceso QR. Menores de edad participan solo con autorización escrita de su representante.",
+    nivelTexto: "Regional · Nacional · Internacional",
     demo: false
   },
+
+  /* ---- Cinta infinita (MEJORA 04/11) --------------------------------------
+     Ítems que desfilan en el hero y en la puerta Gamers. Se combinan con el
+     nombre, la fecha y la ciudad del evento vigente. Decorativo: el texto
+     real siempre está legible en el hero. Editable sin tocar código. */
+  cintaDisciplinas: [
+    "Tekken 8",
+    "Street Fighter 6",
+    "EA Sports FC 26",
+    "Just Dance",
+    "Super Smash Bros. Ultimate",
+    "Call of Duty Mobile"
+  ],
 
   /* ---- Calendario del año — SOLO estados reales (K3, §7.2.11) -----------
      Estados posibles: a-la-venta · en-preparacion · en-negociacion ·
