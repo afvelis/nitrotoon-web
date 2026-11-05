@@ -237,6 +237,12 @@ const PIEZAS_PORTADA = {
       if (cinta) seccion.append(cinta);
     }
     zona.append(seccion);
+    /* BUG-5b (04/11, reportado por el usuario: «no se actualiza días/horas/
+       min/seg»): la cuenta se arrancaba ARRIBA, cuando el hero aún vivía solo
+       en memoria — `$$("[data-cuenta]")` busca en document y no lo encontraba,
+       así que retornaba sin pintar. Ahora se arranca DESPUÉS de insertar el
+       hero en la página: el nodo ya existe y las celdas reciben su número. */
+    if (seccion.querySelector("[data-cuenta]")) iniciarCuentas();
   },
 
   puertas(zona, pieza) {
