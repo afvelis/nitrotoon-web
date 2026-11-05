@@ -127,10 +127,22 @@ function pintarCinta() {
      que la lista quedaba vacía y el guardia `_activa` impedía la segunda
      pasada: las celdas nunca se pintaban. Ahora los nodos se recogen en
      cada tick, de modo que sirve para cualquier cuenta que aparezca después
-     (hero, piezas del dashboard, eventos futuros). */
+     (hero, piezas del dashboard, eventos futuros).
+     BUG-5b: además, el hero se dibuja DESPUÉS del primer arranque; si al
+     llamar todavía no hay cuentas en el documento, se reintenta solo. */
+function enIniciarCuentasReintento() { iniciarCuentas(); }
+
 function iniciarCuentas() {
   if (iniciarCuentas._activa) return;
-  if (!$$("[data-cuenta]").length) return;   /* aún no hay nada que pintar */
+  if (!$$("[data-cuenta]").length) {
+    /* BUG-5b: el hero puede dibujarse después de este arranque. En vez de
+       rendirse para siempre, se reintenta en el próximo ciclo (máx. ~5 s). */
+    if (!iniciarCuentas._reintentos) iniciarCuentas._reintentos = 0;
+    if (iniciarCuentas._reintentos++ < 20) {
+      setTimeout(enIniciarCuentasReintento, 250);
+    }
+    return;
+  }
   iniciarCuentas._activa = true;
   const pintar = () => {
     const ahora = Date.now();
