@@ -12,6 +12,43 @@
 
 const DATOS = window.NITROTOON_DATA || {};
 
+/* ---- FUENTE ÚNICA DEL EVENTO (F0, 05/11/2026) ----------------------------
+   Antes el evento vigente se escribía dos veces: una en `eventoVigente`
+   (para el hero y la cinta) y otra en `eventos[]` (para el calendario). Dos
+   copias del mismo dato se desincronizan en cuanto alguien cambia una: la
+   web acaba anunciando un torneo con dos fechas distintas.
+
+   Ahora `eventoVigente` solo guarda lo exclusivo del hero y HEREDA del
+   calendario el nombre, las fechas y el lugar, buscando la entrada cuyo
+   `id` coincide con `eventoVigente.id`. Cualquier valor heredado que siga
+   escrito a mano se respeta como respaldo (por si el id no existe).        */
+function eventoDeVerdad(datos) {
+  const d = datos || DATOS;
+  const ficha = d.eventoVigente || {};
+  const id = ficha.id;
+  const delCalendario = id && Array.isArray(d.eventos) ? d.eventos.find(e => e.id === id) : null;
+  if (!delCalendario) return Object.assign({}, ficha);   /* sin id válido: se usa tal cual */
+  const heredado = {};
+  /* Qué se hereda del calendario y qué no:
+     · nombre, fechas y ciudad → idénticos en ambos sitios: se heredan.
+     · lugar → NO se hereda. En el hero es el nombre corto («Valencia») y en
+       el calendario la dirección («Sede de la marca aliada del torneo»).
+       Heredarlo pintaría la dirección larga en el titular grande del hero. */
+  for (const campo of ["nombre", "fechaInicio", "fechaFin", "ciudad"]) {
+    const propio = ficha[campo];
+    const vale = propio && propio !== "__HEREDADO__" && propio !== "";
+    heredado[campo] = vale ? propio : delCalendario[campo];
+  }
+  return Object.assign({}, delCalendario, ficha, heredado, {
+    id: id,                       /* el id del calendario manda */
+    estado: delCalendario.estado,
+    estadoTexto: delCalendario.estadoTexto,
+    entradas: delCalendario.entradas
+  });
+}
+/* Deja el evento resuelto a mano para quien lo pida desde cualquier archivo. */
+window.NITROTOON_EVENTO = eventoDeVerdad;
+
 /* ---- Utilidades ----------------------------------------------------------- */
 const $  = (sel, base = document) => base.querySelector(sel);
 const $$ = (sel, base = document) => Array.from(base.querySelectorAll(sel));
@@ -103,7 +140,7 @@ function icono(nombre, clase = "") {
 
 /* ---- Cinta superior: evento vigente + cuenta corta -------------------------- */
 function pintarCinta() {
-  const ev = DATOS.eventoVigente || {};
+  const ev = eventoDeVerdad(DATOS);   /* F0: datos heredados del calendario */
   $$('[data-cinta="nombre"]').forEach(n => n.textContent = ev.nombre || "Nitrotoon");
   $$('[data-cinta="fecha"]').forEach(n => n.textContent = fechaRango(ev.fechaInicio, ev.fechaFin));
   $$('[data-cinta-cta]').forEach(a => a.href = (DATOS.marca && DATOS.marca.entradasUrl) || "#");
@@ -314,6 +351,48 @@ function pintarMenu() {
       ])))
   );
 }
+
+/* ---- Vista previa del borrador (F3) ------------------------------------------
+   `index.html?borrador=1` muestra la portada con lo que hay en el borrador del
+   dashboard, SIN haber publicado nada. Solo funciona en la misma máquina y
+   en el mismo navegador (lee localStorage), así que jamás puede filtrar
+   contenido a un visitante: para él la URL no muestra nada distinto.
+
+   Reglas:
+   · Si la URL no pide el borrador, esto no hace absolutamente nada.
+   · Si el borrador está vacío o roto, se usa lo publicado: nunca una
+     pantalla en blanco.
+   · Se avisa en pantalla con una franja fija, para que nadie confunda la
+     vista previa con el sitio real. */
+function aplicarBorradorSiSePide() {
+  let pedido = false;
+  try {
+    pedido = new URLSearchParams(location.search).get("borrador") === "1";
+  } catch (e) { return false; }
+  if (!pedido) return false;
+
+  let borrador = null;
+  try { borrador = JSON.parse(localStorage.getItem("nitrotoon-borrador") || "null"); } catch (e) { borrador = null; }
+  if (!borrador || !borrador.portada) {
+    console.warn("[Nitrotoon] Pediste la vista previa del borrador, pero no hay ninguno guardado. Se muestra lo publicado.");
+    return false;
+  }
+
+  window.NITROTOON_DATA = borrador;
+
+  /* Franja de advertencia: imposible confundirse. */
+  const franja = document.createElement("div");
+  franja.className = "franja-borrador";
+  franja.setAttribute("role", "status");
+  franja.innerHTML = "<strong>Vista previa del borrador</strong> · esto NO es lo que ve el público todavía."
+    + ' <a href="admin.html">Volver al dashboard</a>';
+  document.body.prepend(franja);
+  document.body.classList.add("con-franja-borrador");
+  return true;
+}
+
+/* Se ejecuta ANTES de que las vistas lean los datos. */
+aplicarBorradorSiSePide();
 
 /* ---- Arranque común ----------------------------------------------------------- */
 function arranqueVitrina() {

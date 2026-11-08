@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="css/componentes.css">
   <link rel="stylesheet" href="css/paginas.css">
   <link rel="stylesheet" href="css/admin.css">
+<link rel="stylesheet" href="css/editor-secciones.css">
 </head>
 <body data-pagina="admin">
   <a class="salto-enlace" href="#contenido">Saltar al contenido</a>
@@ -23,6 +24,7 @@
         <img class="marca__logo" src="assets/logo-encabezado.png" alt="Nitrotoon" width="157" height="88">
       </a>
       <p class="admin__titulo">Dashboard de mantenimiento</p>
+      <a class="btn btn--contorno btn--pequeno" href="manual.html">¿Cómo se usa?</a>
       <button class="btn btn--contorno btn--pequeno" id="btn-salir" type="button" hidden>Salir</button>
     </div>
   </header>
@@ -47,18 +49,47 @@
 
     <!-- ─── PANEL PRINCIPAL ─── -->
     <section id="vista-panel" hidden>
+      <!-- BARRA DE ESTADO PERMANENTE (F3): siempre visible, en todas las pestañas.
+           Dice sin adornos si lo publicado y lo que estás editando coinciden. -->
+      <div class="barra-estado" id="barra-estado" role="status" aria-live="polite">
+        <span class="barra-estado__punto" aria-hidden="true"></span>
+        <span class="barra-estado__texto" id="estado-texto">Cargando el estado…</span>
+        <span class="barra-estado__meta" id="estado-meta"></span>
+      </div>
+
       <nav class="pestanas admin__pestanas" role="tablist" aria-label="Secciones del dashboard">
         <button class="pestana" role="tab" type="button" id="tab-vitrina" aria-controls="panel-vitrina" aria-selected="true">Vitrina</button>
         <button class="pestana" role="tab" type="button" id="tab-medios" aria-controls="panel-medios" aria-selected="false">Medios</button>
         <button class="pestana" role="tab" type="button" id="tab-publicar" aria-controls="panel-publicar" aria-selected="false">Publicar</button>
       </nav>
 
-      <!-- VITRINA: piezas arrastrables + vista previa en vivo -->
+      <!-- VITRINA: editor por secciones + vista previa en vivo -->
       <div id="panel-vitrina" role="tabpanel" aria-labelledby="tab-vitrina" class="admin__panel">
         <div class="admin__columnas">
           <div class="admin__editor">
             <div class="admin__barra">
-              <h2>Componer la portada</h2>
+              <h2>Vitrina</h2>
+              <div class="admin__anadir">
+                <button class="btn btn--contorno btn--pequeno" id="btn-deshacer" type="button" disabled>↶ Deshacer</button>
+                <button class="btn btn--primario btn--pequeno" id="btn-ver-borrador" type="button">Ver la portada con estos cambios</button>
+              </div>
+            </div>
+            <p class="texto-suave">
+              Estas son las secciones de la portada, en el orden en que las ve el visitante.
+              <strong>La estructura está fija</strong>: solo cambias el contenido. Escribe texto plano
+              (sin HTML): lo que escribas se publica tal cual.
+            </p>
+
+            <!-- Editor por secciones: lo dibuja js/editor-secciones.js -->
+            <div id="editor-secciones"></div>
+
+            <!-- Composición avanzada: piezas libres que no son secciones fijas -->
+            <details class="admin__avanzado">
+              <summary>Composición avanzada (piezas libres)</summary>
+              <p class="texto-suave">
+                Aquí puedes añadir bloques sueltos a la portada —un aviso extra, una tarjeta, un enlace,
+                un carrusel— y reordenarlos. Para el día a día no hace falta.
+              </p>
               <div class="admin__anadir">
                 <label for="nueva-pieza">Añadir pieza</label>
                 <select id="nueva-pieza">
@@ -71,9 +102,8 @@
                 </select>
                 <button class="btn btn--contorno btn--pequeno" id="btn-anadir" type="button">Añadir</button>
               </div>
-            </div>
-            <p class="texto-suave">Arrastra <span aria-hidden="true">☰</span> para ordenar (o usa ↑ ↓), desmarca para ocultar sin borrar, y toca <strong>Editar</strong> para cambiar el contenido. La vista previa vive a la derecha. <strong>Escribe siempre texto plano</strong> (sin HTML): lo que escribas se publica tal cual.</p>
-            <ul id="lista-piezas" class="admin__piezas"></ul>
+              <ul id="lista-piezas" class="admin__piezas"></ul>
+            </details>
           </div>
           <aside class="admin__preview" aria-label="Vista previa en vivo">
             <div class="admin__preview-cabecera">
@@ -124,10 +154,25 @@
       <div id="panel-publicar" role="tabpanel" aria-labelledby="tab-publicar" hidden class="admin__panel">
         <h2>Publicar</h2>
         <div id="resumen-publicar" class="admin__resumen" aria-live="polite"></div>
+
+        <!-- F4: revisión previa. Nada se genera sin haber mirado esto. -->
+        <section class="norma" aria-labelledby="revision-titulo">
+          <h3 id="revision-titulo">Revisión antes de generar</h3>
+          <p class="texto-suave">Esto es lo que puede hacer que la portada se vea mal. Si algo está en rojo, conviene arreglarlo antes de publicar.</p>
+          <ul id="lista-revision" class="lista-revision" aria-live="polite"></ul>
+        </section>
+
         <div class="admin__acciones-publicar">
           <button class="btn btn--primario" id="btn-generar" type="button">Generar data.js</button>
           <button class="btn btn--contorno" id="btn-descartar" type="button">Descartar borrador</button>
         </div>
+
+        <!-- F4: árbol de publicación. Tres pasos que se marcan uno a uno. -->
+        <section class="norma" aria-labelledby="arbol-titulo">
+          <h3 id="arbol-titulo">Los tres pasos de publicar</h3>
+          <p class="texto-suave">Ningún paso se marca solo: los confirmas tú, para que nunca creas que algo está publicado cuando no lo está.</p>
+          <ol id="lista-arbol" class="arbol-publicacion"></ol>
+        </section>
 
         <section class="norma" aria-labelledby="checklist-titulo">
           <h3 id="checklist-titulo">Checklist para subir a GitHub</h3>
@@ -165,6 +210,8 @@
   <script src="data.js"></script>
   <script src="js/vitrina.js"></script>
   <script src="js/vistas.js"></script>
+  <script src="js/secciones.js"></script>
+  <script src="js/editor-secciones.js"></script>
   <script src="js/sha256.js"></script>
   <script src="js/admin-acceso.js"></script>
   <script src="js/admin.js"></script>

@@ -31,19 +31,32 @@ window.NITROTOON_DATA = {
   /* ---- Evento vigente: viste el HERO y la cinta (§2) --------------------
      Ciclo actual: PRE-EVENTO (publicidad del evento vigente).
      Para post-evento: eventoVigente.ciclo = "post" y la portada muestra
-     «así salió». Para varios eventos activos: ciclo = "carrusel". */
+     «así salió». Para varios eventos activos: ciclo = "carrusel".
+
+     FUENTE ÚNICA (F0, 05/11/2026): el evento YA NO se escribe dos veces.
+     Antes sus datos vivían aquí Y en `eventos[]`; si se cambiaba uno, el
+     otro quedaba mintiendo (un torneo con dos fechas distintas en la misma
+     web). Ahora esta ficha solo aporta lo que es EXCLUSIVO del hero y todo
+     lo demás se hereda de la entrada del calendario apuntada por `id`.
+     Para cambiar el evento vigente: se cambia `id` aquí y se edita UNA vez
+     la entrada correspondiente en `eventos[]`.                             */
   eventoVigente: {
-    ciclo: "pre",
-    nombre: "Torneo NitroGamers 2026",
+    id: "nitrogamers-2026",   /* ← la entrada de `eventos[]` que manda */
+    ciclo: "pre",             /* pre · post · carrusel */
     eslogan: "Seis disciplinas, tres niveles, una sola jornada épica",
     bajada: "Torneo de deportes electrónicos en Valencia: Tekken 8, Street Fighter 6, EA Sports FC 26, Just Dance, Smash Bros. Ultimate y Call of Duty Mobile. Competencia regional, nacional e internacional con transmisión en vivo y narradores, el sábado 5 y domingo 6 de diciembre.",
-    fechaInicio: "2026-12-05",
-    fechaFin: "2026-12-06",
-    lugar: "Valencia",
-    ciudad: "Valencia, Venezuela",
-    entradasNota: "Aforo limitado a 200 personas con control de acceso QR. Menores de edad participan solo con autorización escrita de su representante.",
     nivelTexto: "Regional · Nacional · Internacional",
-    demo: false
+    entradasNota: "Aforo limitado a 200 personas con control de acceso QR. Menores de edad participan solo con autorización escrita de su representante.",
+    /* Estos tres se HEREDAN del calendario (fuente única). Si algún día hace
+       falta que el hero diga algo distinto, se escribe aquí y manda esto. */
+    nombre: "__HEREDADO__",
+    fechaInicio: "__HEREDADO__",
+    fechaFin: "__HEREDADO__",
+    ciudad: "__HEREDADO__",
+    /* `lugar` NO se hereda a propósito: en el hero es el nombre corto que se
+       ve en grande («Valencia») y en el calendario es la dirección real
+       («Sede de la marca aliada del torneo»). Son dos textos distintos. */
+    lugar: "Valencia"
   },
 
   /* ---- Cinta infinita (MEJORA 04/11) --------------------------------------
