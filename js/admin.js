@@ -21,7 +21,8 @@
     sesion: "nitrotoon-sesion",
     intentos: "nitrotoon-intentos",
     bloqueo: "nitrotoon-bloqueo",
-    borrador: "nitrotoon-borrador"
+    borrador: "nitrotoon-borrador",
+    descarga: "nitrotoon-descarga"
   };
 
   const publicado = JSON.parse(JSON.stringify(window.NITROTOON_DATA || {}));
@@ -238,11 +239,52 @@
   /* ==========================================================================
      4 · VITRINA — lista arrastrable + formularios + vista previa
      ========================================================================== */
+  /* ==========================================================================
+     Guardado del borrador.
+     --------------------------------------------------------------------------
+     Un fallo aquí es el peor que puede tener el dashboard: el usuario escribe
+     media hora, cierra el navegador y descubre que no hay nada. Por eso:
+       · Si el guardado FALLA (cuota llena, modo privado, storage bloqueado),
+         se dice en la barra en rojo y NO se finge que se guardó.
+       · Se reintenta sin la copia anterior para recuperar espacio.
+       · Lo que está en pantalla nunca se pierde: `window.NITROTOON_DATA`
+         sigue vivo aunque el disco diga que no.
+     ========================================================================== */
+  let falloGuardado = null;   /* null = todo bien · string = motivo del fallo */
+
   function guardarBorrador() {
     clearTimeout(guardarBorrador._t);
     guardarBorrador._t = setTimeout(() => {
-      try { localStorage.setItem(CLAVES.borrador, JSON.stringify(trabajo)); } catch (e) { /* lleno */ }
-      window.NITROTOON_DATA = trabajo;   /* las vistas leen en vivo */
+      const texto = JSON.stringify(trabajo);
+      let guardado = false;
+
+      try {
+        localStorage.setItem(CLAVES.borrador, texto);
+        guardado = true;
+      } catch (e) {
+        /* Primer intento fallido. Causa habitual: cuota llena. Se libera
+           espacio borrando datos que se pueden reconstruir (la huella de
+           descarga y el árbol de pasos) y se reintenta una vez. */
+        try {
+          localStorage.removeItem(CLAVES.descarga);
+          localStorage.removeItem(CLAVE_ARBOL);
+          localStorage.setItem(CLAVES.borrador, texto);
+          guardado = true;
+        } catch (e2) {
+          guardado = false;
+          falloGuardado = (e2 && e2.name === "QuotaExceededError")
+            ? "El navegador no tiene espacio para guardar el borrador."
+            : "El navegador no dejó guardar el borrador.";
+        }
+      }
+
+      if (guardado) {
+        falloGuardado = null;
+        ultimoGuardado = new Date().toLocaleTimeString("es-VE", { hour: "2-digit", minute: "2-digit" });
+      }
+
+      window.NITROTOON_DATA = trabajo;   /* las vistas leen en vivo, pase lo que pase */
+      pintarBarraEstado();
     }, 250);
   }
 
@@ -251,6 +293,10 @@
     trabajo = clonar(publicado);
     seleccion = null;
     window.NITROTOON_DATA = trabajo;
+    if (window.EDITOR_SECCIONES) {
+      window.EDITOR_SECCIONES.reiniciarHistorial();
+      window.EDITOR_SECCIONES.pintar(ref("editor-secciones"));
+    }
     renderListaPiezas();
     actualizarPreview();
     pintarResumen();
@@ -495,13 +541,27 @@
   };
   const extDe = (mime, porDefecto) => EXT_POR_MIME[mime] || porDefecto;
 
+  /* BUG-6 (05/11/2026): en algunos navegadores el pedido a IndexedDB se queda
+     colgado cuando la web se abre con doble clic (file://). La versión
+     anterior esperaba indefinidamente y el panel se quedaba SIN biblioteca de
+     medios, sin ningún error visible. Ahora hay un tope de 4 segundos: si no
+     responde, se sigue sin medios y la biblioteca avisa en pantalla. */
   function abrirDB() {
     return new Promise(res => {
       if (!window.indexedDB) { res(null); return; }
-      const pedido = window.indexedDB.open("nitrotoon-admin", 1);
-      pedido.onupgradeneeded = () => pedido.result.createObjectStore("medios", { keyPath: "id" });
-      pedido.onsuccess = () => res(pedido.result);
-      pedido.onerror = () => res(null);
+      let hecho = false;
+      const terminar = (v) => { if (!hecho) { hecho = true; clearTimeout(reloj); res(v); } };
+      const reloj = setTimeout(() => terminar(null), 4000);
+      let pedido;
+      try {
+        pedido = window.indexedDB.open("nitrotoon-admin", 1);
+      } catch (e) { terminar(null); return; }
+      pedido.onupgradeneeded = () => {
+        try { pedido.result.createObjectStore("medios", { keyPath: "id" }); } catch (e) {}
+      };
+      pedido.onsuccess = () => terminar(pedido.result);
+      pedido.onerror = () => terminar(null);
+      pedido.onblocked = () => terminar(null);
     });
   }
 
@@ -754,8 +814,272 @@ window.NITROTOON_DATA = ${JSON.stringify(datos, null, 2)};
 `;
   }
 
+  /* ==========================================================================
+     F3 · BARRA DE ESTADO PERMANENTE
+     --------------------------------------------------------------------------
+     Responde de un vistazo a la única pregunta que importa: «¿esto que veo
+     está en internet o solo en mi computadora?». Tres estados posibles:
+
+       · Verde  «Todo publicado»      — el borrador es idéntico a lo publicado
+       · Ámbar  «N cambios sin subir» — hay diferencias
+       · Azul   «Descargado, sin confirmar» — ya generaste el data.js pero
+                 no has marcado que lo subiste
+
+     Además recuerda la última vez que se guardó el borrador.
+     ========================================================================== */
+  const ESTADOS = {
+    igual:     { clase: "barra-estado--ok",     texto: "Todo publicado" },
+    pendiente: { clase: "barra-estado--pend",   texto: "cambios sin publicar" },
+    descargado: { clase: "barra-estado--medio", texto: "descargado, falta subirlo" },
+    error:     { clase: "barra-estado--error",  texto: "no se pudo guardar" }
+  };
+
+  let ultimoGuardado = null;
+
+  function contarCambios() {
+    /* Comparación por secciones para poder decir CUÁNTOS cambios hay, no solo
+       si hay alguno. Se recorren las claves de primer nivel y se cuenta cada
+       una que difiera. */
+    const a = publicado, b = trabajo;
+    let n = 0;
+    const claves = new Set([...Object.keys(a || {}), ...Object.keys(b || {})]);
+    for (const k of claves) {
+      if (k === "version" || k === "generado") continue;   /* los pone el dashboard */
+      if (JSON.stringify(a[k]) !== JSON.stringify(b[k])) n++;
+    }
+    return n;
+  }
+
+  function estadoPublicacion() {
+    const cambios = contarCambios();
+    let descarga = null;
+    try { descarga = JSON.parse(localStorage.getItem(CLAVES.descarga) || "null"); } catch (e) { descarga = null; }
+    if (cambios === 0) return { tipo: "igual", cambios: 0 };
+    if (descarga && descarga.huella === huella(trabajo)) return { tipo: "descargado", cambios };
+    return { tipo: "pendiente", cambios };
+  }
+
+  /* Huella simple del borrador: sirve para saber si el data.js descargado
+     corresponde a lo que hay ahora mismo en pantalla. */
+  function huella(obj) {
+    const texto = JSON.stringify(obj);
+    let h = 5381;
+    for (let i = 0; i < texto.length; i++) h = ((h * 33) ^ texto.charCodeAt(i)) >>> 0;
+    return h.toString(36);
+  }
+
+  function pintarBarraEstado() {
+    const barra = ref("barra-estado");
+    const texto = ref("estado-texto");
+    const meta = ref("estado-meta");
+    if (!barra || !texto) return;
+
+    const est = estadoPublicacion();
+    const def = ESTADOS[est.tipo] || ESTADOS.pendiente;
+    barra.className = "barra-estado " + def.clase;
+
+    /* El fallo de guardado manda sobre cualquier otro estado: si no se está
+       guardando, lo demás da igual. Nunca se oculta detrás de un verde. */
+    if (falloGuardado) {
+      barra.className = "barra-estado " + ESTADOS.error.clase;
+      texto.textContent = falloGuardado + " Descarga el data.js AHORA para no perder lo escrito.";
+      if (meta) meta.textContent = "Sin guardar";
+      return;
+    }
+
+    if (est.tipo === "igual") {
+      texto.textContent = "Todo publicado · la vitrina muestra exactamente lo que tienes aquí";
+    } else if (est.tipo === "descargado") {
+      texto.textContent = `data.js descargado · falta subirlo a GitHub (${est.cambios} cambio${est.cambios === 1 ? "" : "s"})`;
+    } else {
+      texto.textContent = `${est.cambios} cambio${est.cambios === 1 ? "" : "s"} sin publicar · genera el data.js para subirlo`;
+    }
+
+    if (meta) {
+      meta.textContent = ultimoGuardado
+        ? `Borrador guardado a las ${ultimoGuardado}`
+        : "Borrador sin guardar todavía";
+    }
+  }
+
+  function marcarDescargado() {
+    try {
+      localStorage.setItem(CLAVES.descarga, JSON.stringify({
+        huella: huella(trabajo), cuando: new Date().toISOString()
+      }));
+    } catch (e) { /* sin storage */ }
+    pintarBarraEstado();
+  }
+
+  /* ==========================================================================
+     F4 · REVISIÓN PREVIA Y ÁRBOL DE PUBLICACIÓN
+     --------------------------------------------------------------------------
+     REVISIÓN: antes de generar data.js se repasa lo que de verdad puede
+     estropear la portada. No se impide generar (el usuario manda), pero se
+     dice claramente qué está mal y dónde. Cada punto es comprobable, no una
+     opinión: campos vacíos, textos pasados de largo, secciones retiradas,
+     imágenes que faltan en el repositorio.
+
+     ÁRBOL: tres casillas que el usuario marca CONSCIENTEMENTE:
+       1 · data.js descargado
+       2 · subido a GitHub
+       3 · comprobado en vivo
+     Nunca se marcan solas. Así nadie cree que publicó cuando no lo hizo.
+     ========================================================================== */
+  const CLAVE_ARBOL = "nitrotoon-arbol";
+
+  function revisionPrevia() {
+    const pegas = [];      /* nivel "largo": conviene arreglar */
+    const avisos = [];     /* nivel "justo": está bien, pero ojo */
+
+    /* 1 · Secciones retiradas */
+    const piezas = (trabajo.portada && trabajo.portada.piezas) || [];
+    const retiradas = piezas.filter(p => p.visible === false);
+    if (retiradas.length) {
+      const S0 = window.SECCIONES;
+      const nombres = retiradas.map(p => {
+        /* Se busca la sección por id y, si no, por el tipo de pieza: así se
+           muestra «Aliados y sponsors» y no el identificador interno. */
+        if (S0) {
+          const porId = S0.porId[p.id];
+          if (porId) return porId.nombre;
+          const porTipo = S0.lista.find(x => x.tipoPieza === p.tipo);
+          if (porTipo) return porTipo.nombre;
+        }
+        return p.tipo;
+      });
+      avisos.push({
+        nivel: "justo",
+        texto: `Vas a retirar ${retiradas.length} sección(es) del sitio: ${nombres.join(", ")}. El público dejará de verlas.`
+      });
+    }
+
+    /* 2 · Campos vacíos o pasados de límite, según el mapa de secciones */
+    const S = window.SECCIONES;
+    if (S) {
+      for (const sec of S.lista) {
+        for (const campo of sec.campos) {
+          let valor = S.leerRuta(trabajo, campo.ruta);
+          /* Un campo heredado se lee del evento resuelto */
+          if (valor === "__HEREDADO__" && typeof window.NITROTOON_EVENTO === "function") {
+            const r = window.NITROTOON_EVENTO(trabajo);
+            valor = r[campo.clave];
+          }
+          const vacio = valor === undefined || valor === null
+            || (Array.isArray(valor) && valor.length === 0)
+            || (typeof valor === "string" && valor.trim() === "");
+          if (vacio) {
+            pegas.push({ nivel: "largo", texto: `«${sec.nombre}» → ${campo.etiqueta}: está vacío y se verá un hueco en la portada.` });
+            continue;
+          }
+          const r = S.evaluar(valor, campo);
+          if (r.nivel === "largo") {
+            avisos.push({ nivel: "justo", texto: `«${sec.nombre}» → ${campo.etiqueta}: ${r.mensaje}.` });
+          }
+        }
+      }
+    }
+
+    /* 3 · Imágenes del borrador que todavía no están en el repositorio */
+    const imagenesPendientes = medios.filter(m => m.rutaDestino);
+    if (imagenesPendientes.length) {
+      avisos.push({
+        nivel: "justo",
+        texto: `Tienes ${imagenesPendientes.length} imagen(es) nueva(s) en tu biblioteca: hay que subirlas a GitHub además del data.js, o la portada mostrará huecos.`
+      });
+    }
+
+    /* 4 · Sin cambios: no hay nada que publicar */
+    if (contarCambios() === 0) {
+      avisos.push({ nivel: "justo", texto: "No hay cambios respecto a lo publicado: generar data.js ahora solo creará una copia idéntica." });
+    }
+
+    return { pegas, avisos };
+  }
+
+  function pintarRevision() {
+    const lista = ref("lista-revision");
+    if (!lista) return;
+    lista.replaceChildren();
+    const { pegas, avisos } = revisionPrevia();
+
+    if (!pegas.length && !avisos.length) {
+      lista.append(h("li", { class: "lista-revision__item lista-revision__item--ok" }, [
+        h("span", { class: "lista-revision__marca", html: "✓" }),
+        h("span", { html: "Todo en orden: puedes generar el data.js con tranquilidad." })
+      ]));
+      return;
+    }
+    for (const p of pegas) {
+      lista.append(h("li", { class: "lista-revision__item lista-revision__item--pega" }, [
+        h("span", { class: "lista-revision__marca", html: "!" }),
+        h("span", { html: p.texto })
+      ]));
+    }
+    for (const a of avisos) {
+      lista.append(h("li", { class: "lista-revision__item lista-revision__item--aviso" }, [
+        h("span", { class: "lista-revision__marca", html: "·" }),
+        h("span", { html: a.texto })
+      ]));
+    }
+  }
+
+  /* ---- Árbol de publicación --------------------------------------------- */
+  function leerArbol() {
+    try {
+      const a = JSON.parse(localStorage.getItem(CLAVE_ARBOL) || "null");
+      return a || { descargado: false, subido: false, verificado: false };
+    } catch (e) { return { descargado: false, subido: false, verificado: false }; }
+  }
+
+  function guardarArbol(arbol) {
+    try { localStorage.setItem(CLAVE_ARBOL, JSON.stringify(arbol)); } catch (e) {}
+  }
+
+  function pintarArbol() {
+    const lista = ref("lista-arbol");
+    if (!lista) return;
+    lista.replaceChildren();
+    const arbol = leerArbol();
+    const pasos = [
+      { clave: "descargado", titulo: "1 · data.js descargado", ayuda: "Genera el archivo y míralo en tu carpeta de Descargas." },
+      { clave: "subido", titulo: "2 · Subido a GitHub", ayuda: "Add file → Upload files → arrastra el data.js → Commit changes." },
+      { clave: "verificado", titulo: "3 · Comprobado en vivo", ayuda: "Abre la web pública y confirma que tus cambios están ahí." }
+    ];
+    for (const paso of pasos) {
+      const id = `arbol-${paso.clave}`;
+      const chk = h("input", { type: "checkbox", id });
+      chk.checked = !!arbol[paso.clave];
+      chk.addEventListener("change", () => {
+        const a = leerArbol();
+        a[paso.clave] = chk.checked;
+        /* Desmarcar un paso desmarca los siguientes: si no subiste,
+           no puedes haber verificado. */
+        const orden = ["descargado", "subido", "verificado"];
+        const i = orden.indexOf(paso.clave);
+        if (!chk.checked) for (let j = i + 1; j < orden.length; j++) a[orden[j]] = false;
+        else for (let j = 0; j < i; j++) a[orden[j]] = true;   /* marcar implica los anteriores */
+        guardarArbol(a);
+        pintarArbol();
+        pintarBarraEstado();
+      });
+      lista.append(h("li", { class: "arbol-publicacion__paso" + (arbol[paso.clave] ? " arbol-publicacion__paso--hecho" : "") }, [
+        h("label", { class: "arbol-publicacion__etiqueta", for: id }, [
+          chk,
+          h("span", {}, [
+            h("strong", { html: paso.titulo }),
+            h("span", { class: "texto-micro texto-suave", html: paso.ayuda })
+          ])
+        ])
+      ]));
+    }
+  }
+
   function pintarResumen() {
     const caja = ref("resumen-publicar");
+    pintarBarraEstado();
+    pintarRevision();
+    pintarArbol();
     if (!caja) return;
     const piezas = (trabajo.portada && trabajo.portada.piezas) || [];
     const activas = piezas.filter(p => p.visible !== false).length;
@@ -784,6 +1108,7 @@ window.NITROTOON_DATA = ${JSON.stringify(datos, null, 2)};
     a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
     guardarBorrador();
+    marcarDescargado();     /* F3: el data.js recién generado ya tiene su huella */
     pintarResumen();
     pintarChecklist();
   }
@@ -843,6 +1168,131 @@ window.NITROTOON_DATA = ${JSON.stringify(datos, null, 2)};
     renderListaMedios();
     pintarResumen();
     pintarChecklist();
+    conectarEditorSecciones();
+  }
+
+  /* ==========================================================================
+     9 · EDITOR POR SECCIONES (F1) — puente con js/editor-secciones.js
+     --------------------------------------------------------------------------
+     El editor escribe SOBRE el borrador `trabajo` de este archivo, que es el
+     mismo objeto que se publica al generar data.js. Aquí solo se le da acceso
+     y se le dice qué hacer cuando algo cambia.
+     ========================================================================== */
+  let editorConectado = false;
+
+  function conectarEditorSecciones() {
+    const E = window.EDITOR_SECCIONES;
+    if (!E) return;   /* el archivo no cargó: el panel sigue funcionando sin él */
+
+    E.configurar({
+      datos: () => trabajo,
+
+      alCambiar: () => {
+        guardarBorrador();          /* guarda en localStorage + publica en vivo */
+        actualizarPreview();        /* repinta la vista previa lateral */
+        renderListaPiezas();        /* mantiene sincronizada la lista avanzada */
+        pintarResumen();
+      },
+
+      /* Deshacer: reemplaza el borrador entero por el estado anterior. */
+      reemplazar: (estado) => {
+        trabajo = estado;
+        window.NITROTOON_DATA = trabajo;
+        guardarBorrador();
+        E.pintar(ref("editor-secciones"));
+        renderListaPiezas();
+        actualizarPreview();
+        pintarResumen();
+      },
+
+      alEnfocar: (seccion) => { seleccion = seccion && seccion.tipoPieza; },
+
+      /* F2: el editor de secciones adjunta una imagen. Se guarda en la
+         biblioteca local (IndexedDB) junto con su ruta de destino, para que
+         al publicar el usuario sepa qué archivo subir y con qué nombre. */
+      guardarMedio: async (datos) => {
+        const registro = {
+          id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+          nombre: datos.nombre,
+          tipoSpec: datos.tipoSpec,
+          rutaDestino: datos.rutaDestino,
+          seccion: datos.seccion,
+          mime: datos.mime,
+          peso: datos.peso,
+          ancho: datos.ancho,
+          alto: datos.alto,
+          estado: "ok",
+          mensajes: [],
+          creado: new Date().toISOString(),
+          blob: datos.blob
+        };
+        await guardarMedio(registro);
+        medios.push(registro);
+        renderListaMedios();
+        pintarResumen();
+      },
+
+      /* «Ver en la portada»: pinta en la vista previa la sección pedida. */
+      previewDe: (seccion) => {
+        const marco = ref("contenedor-preview");
+        const etiqueta = ref("preview-pieza");
+        if (!marco) return;
+        const pieza = piezaPorId(seccion.id)
+          || ((trabajo.portada.piezas || []).find(p => p.tipo === seccion.tipoPieza))
+          || { id: seccion.id, tipo: seccion.tipoPieza, visible: true };
+        if (etiqueta) etiqueta.textContent = `· ${seccion.nombre}`;
+        marco.replaceChildren();
+        if (pieza.visible === false) {
+          marco.append(h("p", { class: "aviso", html: `<div><strong>Retirada del sitio</strong><p>Esta sección no se está mostrando al público.</p></div>` }));
+          return;
+        }
+        window.VISTAS.pieza(pieza.tipo, pieza, marco);
+      }
+    });
+
+    if (!editorConectado) {
+      const btnDeshacer = ref("btn-deshacer");
+      if (btnDeshacer) {
+        btnDeshacer.addEventListener("click", () => {
+          if (E.deshacer()) {
+            trabajo = window.NITROTOON_DATA;
+            renderListaPiezas();
+            actualizarPreview();
+            pintarResumen();
+          }
+        });
+      }
+
+      /* F3: abrir la portada real con el borrador aplicado. */
+      const btnVer = ref("btn-ver-borrador");
+      if (btnVer) {
+        btnVer.addEventListener("click", () => {
+          guardarBorrador();          /* asegura que el borrador esté en storage */
+          setTimeout(() => {
+            window.open("index.html?borrador=1", "_blank", "noopener");
+          }, 350);
+        });
+      }
+
+      /* Ctrl+Z dentro del editor */
+      document.addEventListener("keydown", (e) => {
+        const esDeshacer = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z";
+        if (!esDeshacer) return;
+        const enCampo = /^(INPUT|TEXTAREA)$/.test((e.target.tagName || ""));
+        if (enCampo) return;   /* dentro de un campo manda el deshacer del navegador */
+        if (vistaPanel().hidden) return;
+        e.preventDefault();
+        if (E.deshacer()) {
+          trabajo = window.NITROTOON_DATA;
+          renderListaPiezas();
+          actualizarPreview();
+          pintarResumen();
+        }
+      });
+      editorConectado = true;
+    }
+
+    E.pintar(ref("editor-secciones"));
   }
 
   function mostrarLogin() {
@@ -883,7 +1333,20 @@ window.NITROTOON_DATA = ${JSON.stringify(datos, null, 2)};
       ref("btn-ampliar").textContent = amplia ? "Vista normal" : "Ancho completo";
     });
     ref("btn-anadir").addEventListener("click", anadirPieza);
-    ref("btn-generar").addEventListener("click", generarDataJs);
+    ref("btn-generar").addEventListener("click", () => {
+      /* F4: si hay pegas (campos vacíos), se avisa antes de generar. No se
+         impide: el usuario decide. Pero no puede decir luego que no sabía. */
+      const { pegas } = revisionPrevia();
+      if (pegas.length) {
+        const resumen = pegas.map(p => "· " + p.texto).join("\n");
+        const seguir = window.confirm(
+          "Hay " + pegas.length + " cosa(s) que se verán mal en la portada:\n\n" +
+          resumen + "\n\n¿Generar el data.js igualmente?"
+        );
+        if (!seguir) return;
+      }
+      generarDataJs();
+    });
     ref("btn-descartar").addEventListener("click", () => {
       if (confirm("¿Descartar el borrador y volver a lo publicado?")) descartarBorrador();
     });
@@ -903,7 +1366,20 @@ window.NITROTOON_DATA = ${JSON.stringify(datos, null, 2)};
 
     /* Biblioteca */
     db = await abrirDB();
-    medios = await listarMedios();
+    medios = db ? await listarMedios() : [];
+    /* BUG-6: si IndexedDB no respondió, se avisa en pantalla en vez de dejar
+       el panel vacío sin explicación. Se puede seguir trabajando: los textos
+       y la vista previa funcionan; solo faltan los archivos ya subidos. */
+    if (!db) {
+      const aviso = document.createElement("p");
+      aviso.className = "admin__aviso-bd";
+      aviso.setAttribute("role", "status");
+      aviso.textContent = "Este navegador no permitió abrir la biblioteca de medios "
+        + "(suele pasar al abrir el archivo con doble clic). Puedes editar textos e "
+        + "imágenes nuevas igual; lo ya subido antes no se verá en esta sesión.";
+      const destino = document.querySelector("[data-admin-aviso]") || document.querySelector("#panel") || document.body;
+      destino.prepend(aviso);
+    }
 
     if (sesion.activa()) abrirPanel(); else mostrarLogin();
   }
