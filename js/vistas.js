@@ -153,7 +153,7 @@ function seccionPortada(id, pieza, def, cuerpo, { compacta = false, enlace = nul
 const PIEZAS_PORTADA = {
   /* ---- Piezas del sistema ---- */
   hero(zona) {
-    const ev = datosVivos().eventoVigente || {};
+    const ev = eventoDeVerdad(datosVivos());   /* F0: fuente única */
     const seccion = h("section", { class: "hero", id: "hero", "data-insignia-seccion": true, "aria-label": "Evento vigente" }, [
       h("div", { class: "estrellas", "aria-hidden": "true" })
     ]);
@@ -327,7 +327,8 @@ const PIEZAS_PORTADA = {
   },
 
   cuenta(zona, p) {
-    const f = p.fecha ? `${p.fecha}T00:00:00-04:00` : (datosVivos().eventoVigente && datosVivos().eventoVigente.fechaInicio ? `${datosVivos().eventoVigente.fechaInicio}T00:00:00-04:00` : null);
+    const evVivo = eventoDeVerdad(datosVivos());
+    const f = p.fecha ? `${p.fecha}T00:00:00-04:00` : (evVivo.fechaInicio ? `${evVivo.fechaInicio}T00:00:00-04:00` : null);
     const celdas = ["días", "horas", "min", "seg"].map(e =>
       h("span", { class: "cuenta__celda" }, [
         h("span", { class: "cuenta__valor", "data-celda": true, html: "--" }),
@@ -720,7 +721,7 @@ function construirCinta(items) {
 }
 
 function itemsDeCinta() {
-  const ev = datosVivos().eventoVigente || {};
+  const ev = eventoDeVerdad(datosVivos());   /* F0: fuente única */
   const disciplinas = (datosVivos().cintaDisciplinas || []);
   const items = [];
   if (ev.nombre) items.push({ texto: ev.nombre, tono: "acento" });
