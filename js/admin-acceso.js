@@ -17,7 +17,7 @@
 window.ADMIN_ACCESO = {
   /* sha256Hex("nitrotoon:" + PIN real) — el PIN solo existe en la cabeza
      del administrador: nunca en archivos, chats ni capturas. */
-  hash: "a3950a7a88e460e20c54da778812428d9761eaf7d2a4fbab63d38a3112d18a63",
+  hash: "5b413f15bcd3e0523c1c2395f7ba8e93ba0ea25c5679f478aa55b22798a27952",
 
   /* Salto que se antepone al PIN antes de hashear */
   salto: "nitrotoon",
