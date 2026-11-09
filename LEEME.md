@@ -73,8 +73,11 @@ Abre **`admin.html`** e introduce tu **PIN**. El dashboard tiene 3 pestañas:
 - El **PIN nunca vive en el código**: solo su hash SHA-256 con salto
   (`js/admin-acceso.js`). 5 intentos fallidos bloquean 15 minutos; la
   sesión caduca sola (8 h) y vive solo en tu navegador.
-- **PIN de demostración: `NITRO27`** — cámbialo antes de publicar el sitio
-  real (pestaña Publicar → Cambiar PIN, y sube el `admin-acceso.js` nuevo).
+- **El PIN no se documenta aquí.** Es una credencial: nunca debe escribirse en
+  un archivo del repo, porque todo el repo es público. Se define como hash
+  SHA-256 con salto en `js/admin-acceso.js`. Para cambiarlo, abre
+  `admin.html` → pestaña **Publicar** → **Cambiar PIN**, y sustituye la línea
+  `hash:` del `js/admin-acceso.js` con el valor que te dé.
 
 Actualización manual (sin dashboard): todo lo visible vive en **`data.js`**.
 
